@@ -27,12 +27,12 @@ from scipy import stats
 import pandas as pd
 
 
-# We will begin by importing and cleaning the dataset. Download the dataset from http://biostat.mc.vanderbilt.edu/wiki/pub/Main/DataSets/titanic3.csv and update the cell below with the path to the dataset csv.
+# We will begin by importing and cleaning the dataset. Download the dataset from https://biostat.app.vumc.org/wiki/pub/Main/DataSets/titanic3.csv and update the cell below with the path to the dataset csv.
 
 # In[3]:
 
 
-# Download dataset from: http://biostat.mc.vanderbilt.edu/wiki/pub/Main/DataSets/titanic3.csv
+# Download dataset from: https://biostat.app.vumc.org/wiki/pub/Main/DataSets/titanic3.csv
 # Update path to dataset here.
 dataset_path = "titanic3.csv"
 
@@ -92,9 +92,9 @@ data = titanic_data.to_numpy()
 # Separate training and test sets using 
 train_indices = np.random.choice(len(labels), int(0.7*len(labels)), replace=False)
 test_indices = list(set(range(len(labels))) - set(train_indices))
-train_features = data[train_indices]
+train_features = np.array(data[train_indices], dtype=float)
 train_labels = labels[train_indices]
-test_features = data[test_indices]
+test_features = np.array(data[test_indices], dtype=float)
 test_labels = labels[test_indices]
 
 
@@ -123,7 +123,7 @@ class TitanicSimpleNNModel(nn.Module):
         return self.softmax(self.linear3(sigmoid_out2))
 
 
-# We can either use a pretrained model or train the network using the training data for 200 epochs. Note that the results of later steps may not match if retraining.
+# We can either use a pretrained model or train the network using the training data for 200 epochs. Note that the results of later steps may not match if retraining. The pretrained model can be downloaded here: https://github.com/pytorch/captum/blob/master/tutorials/models/titanic_model.pt
 
 # In[12]:
 
@@ -134,6 +134,8 @@ USE_PRETRAINED_MODEL = True
 if USE_PRETRAINED_MODEL:
     net.load_state_dict(torch.load('models/titanic_model.pt'))
     print("Model Loaded!")
+    input_tensor = torch.from_numpy(train_features).type(torch.FloatTensor)
+    label_tensor = torch.from_numpy(train_labels)
 else:
     criterion = nn.CrossEntropyLoss()
     num_epochs = 200
@@ -320,13 +322,13 @@ neuron_cond = NeuronConductance(net, net.sigmoid1)
 # In[26]:
 
 
-neuron_cond_vals_10 = neuron_cond.attribute(test_input_tensor, neuron_index=10, target=1)
+neuron_cond_vals_10 = neuron_cond.attribute(test_input_tensor, neuron_selector=10, target=1)
 
 
 # In[27]:
 
 
-neuron_cond_vals_0 = neuron_cond.attribute(test_input_tensor, neuron_index=0, target=1)
+neuron_cond_vals_0 = neuron_cond.attribute(test_input_tensor, neuron_selector=0, target=1)
 
 
 # In[28]:

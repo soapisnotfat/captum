@@ -66,7 +66,7 @@ except:
     print("please provide a valid path to pytorch-vqa")
     
 from captum.insights import AttributionVisualizer, Batch
-from captum.insights.features import ImageFeature, TextFeature
+from captum.insights.attr_vis.features import ImageFeature, TextFeature
 from captum.attr import TokenReferenceBase, configure_interpretable_embedding_layer, remove_interpretable_embedding_layer
 
 
@@ -81,7 +81,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # 
 # Let's load the VQA model (again, please refer to the [model interpretation tutorial on VQA](https://captum.ai/tutorials/Multimodal_VQA_Interpret) if you want details)
 
-# In[ ]:
+# In[4]:
 
 
 saved_state = torch.load(VQA_MODEL_PATH, map_location=device)
@@ -127,16 +127,16 @@ class ResNetLayer4(torch.nn.Module):
         self.r_model = resnet.resnet152(pretrained=True)
         self.r_model.eval()
         self.r_model.to(device)
-        self.buffer = None
-
-        def save_output(module, input, output):
-            self.buffer = output
-
-        self.r_model.layer4.register_forward_hook(save_output)
 
     def forward(self, x):
-        self.r_model(x)
-        return self.buffer
+        x = self.r_model.conv1(x)
+        x = self.r_model.bn1(x)
+        x = self.r_model.relu(x)
+        x = self.r_model.maxpool(x)
+        x = self.r_model.layer1(x)
+        x = self.r_model.layer2(x)
+        x = self.r_model.layer3(x)
+        return self.r_model.layer4(x)
 
 class VQA_Resnet_Model(Net):
     def __init__(self, embedding_tokens):
@@ -258,7 +258,7 @@ def input_text_transform(x):
 
 def vqa_dataset(image, questions, targets):
     img = Image.open(image).convert("RGB")
-    img = transform(img).unsqueeze(0)
+    img = transform(img).unsqueeze(0).to(device)
 
     for question, target in zip(questions, targets):
         q, q_len = encode_question(question)
@@ -352,9 +352,9 @@ visualizer = AttributionVisualizer(
 
 # And now we can visualize the outputs produced by the model.
 # 
-# As of writing this tutorial, the `AttributionVisualizer` class utilizes captum's implementation of [integrated gradients](https://captum.ai/docs/algorithms#integrated-gradients) ([`IntegratedGradients`](https://captum.ai/api/integrated_gradients.html)).
+# Insights allows [different attribution methods](https://captum.ai/docs/algorithms) to be chosen. By default, [integrated gradients](https://captum.ai/api/integrated_gradients) is selected.
 
-# In[ ]:
+# In[17]:
 
 
 visualizer.render()
@@ -364,14 +364,14 @@ visualizer.render()
 
 
 # show a screenshot if using notebook non-interactively
-from IPython.display import Image
-Image(filename='img/captum_insights_vqa.png')
+import IPython.display
+IPython.display.Image(filename='img/captum_insights_vqa.png')
 
 
-# Finally, since we are done with visualization, we will revert the change to the model we made with `configure_interpretable_embedding_layer`. To do this, we will invoke the `remove_interpretable_embedding_layer` function.
+# Finally, since we are done with visualization, we will revert the change to the model we made with `configure_interpretable_embedding_layer`. To do this, we will invoke the `remove_interpretable_embedding_layer` function. Uncomment the line below to execute the cell.
 
 # In[19]:
 
 
-remove_interpretable_embedding_layer(vqa_resnet, interpretable_embedding)
+# remove_interpretable_embedding_layer(vqa_resnet, interpretable_embedding)
 
